@@ -34,6 +34,8 @@ class BigInteger{
 		int length();
 		bool isPositive();
 		void readString(string);
+		string toString();
+		void addToTheBeginning(int val, int cant = 1);
 	private:
 		vector<unsigned int> value;
 		bool positive;
@@ -43,7 +45,7 @@ class BigInteger{
 		unsigned int & getValueAt(int);
 		BigInteger addition(BigInteger &,BigInteger &);
 		BigInteger substraction(BigInteger, BigInteger &);
-		BigInteger multiplication(BigInteger &, BigInteger &);
+		BigInteger multiplication(BigInteger, BigInteger);
 		BigInteger division(BigInteger &, BigInteger &);
 		BigInteger pow(BigInteger &);
 		BigInteger pow(int);
@@ -111,6 +113,11 @@ BigInteger BigInteger::operator --(int){
 	BigInteger prevCopy = *this;
 	*this = addition(*this,one);
 	return prevCopy;
+}
+
+BigInteger BigInteger::operator * (BigInteger bigNumber){
+	BigInteger result = multiplication(*this,bigNumber);
+	return result;
 }
 unsigned int & BigInteger::operator[](int index){
 	return this->value[this->length()-1-index];
@@ -232,6 +239,15 @@ void BigInteger::readString(string str){
 	removeLeadingZeros();
 	makePositiveIfZero();
 }
+
+string BigInteger::toString(){
+	string ret = "";
+	for(int i = this->length()-1; i>=0; i--){
+		ret += this->getValueAt(i)+'0';
+	}
+	if(!isPositive()) ret = "-" + ret;
+	return ret;
+}
 void BigInteger::addLeadingZeros(int zeros){
 	while(zeros--) value.emplace_back(0);
 }
@@ -244,6 +260,11 @@ void BigInteger::makePositiveIfZero(){
 	if(this->length() > 1) return;
 	if(!this->getValueAt(0)) positive = true;
 }
+
+void BigInteger::addToTheBeginning(int val, int cant){
+	while(cant--) value.insert(value.begin(),val);
+}
+
 unsigned int & BigInteger::getValueAt(int index){
 	return value[index];
 }
@@ -256,7 +277,7 @@ BigInteger BigInteger::addition(BigInteger &big1, BigInteger &big2){
 				return substraction(big2,big1);
 			}
 		}else{
-			for(int i = big1.length()-1; i>=0; i++){
+			for(int i = big1.length()-1; i>=0; i--){
 				if(big1.getValueAt(i) == big2.getValueAt(i)) continue;
 				if(big1.getValueAt(i) > big2.getValueAt(i)) return substraction(big1,big2);
 				return substraction(big2,big1);
@@ -307,30 +328,65 @@ BigInteger BigInteger::substraction(BigInteger big1, BigInteger &big2){
 	result.makePositiveIfZero();
 	return result;
 }
+
+BigInteger BigInteger::multiplication(BigInteger big1, BigInteger big2){
+	if(big1.length() == 1 && big2.length() == 1){
+		int val1 = atoi(big1.toString().c_str()), val2 = atoi(big2.toString().c_str());;
+		BigInteger result(to_string(val1*val2));
+		return result;
+	}
+	if(big1.length() & 1) big1.addLeadingZeros(1);
+	if(big2.length() & 1) big2.addLeadingZeros(1);
+	int maxLength = max(big1.length(), big2.length());
+	big1.addLeadingZeros(maxLength-big1.length());
+	big2.addLeadingZeros(maxLength-big2.length());
+	BigInteger bigNum1H, bigNum1L, bigNum2H, bigNum2L;
+	int splitSize = maxLength>>1;
+	bigNum1H.addLeadingZeros(splitSize-1), bigNum1L.addLeadingZeros(splitSize-1),
+	bigNum2H.addLeadingZeros(splitSize-1), bigNum2L.addLeadingZeros(splitSize-1);
+	for(int i = 0; i<maxLength; i++){
+		if(i < splitSize){
+			bigNum1H[i] = big1[i];
+			bigNum2H[i] = big2[i]; 
+		}else{
+			bigNum1L[i-splitSize] = big1[i];
+			bigNum2L[i-splitSize] = big2[i];
+		}
+	}
+	BigInteger A = multiplication(bigNum1H, bigNum2H);
+	BigInteger D = multiplication(bigNum1L, bigNum2L);
+	BigInteger E = multiplication(bigNum1H+bigNum1L,bigNum2H+bigNum2L) - A - D;
+	A.addToTheBeginning(0,maxLength);
+	E.addToTheBeginning(0,maxLength/2);
+	BigInteger result =  A + E + D;
+	if(big1.isPositive() != big2.isPositive()){
+		result.positive = false;
+	}else{
+		result.positive = true;
+	}
+	result.removeLeadingZeros();
+	return result;
+}
 int main(){
 	ios_base::sync_with_stdio(false);
 	cin.tie(NULL);
 	cout.tie(NULL);
-	BigInteger a, b;
-	BigInteger c("8769478954785748975894792");
+	BigInteger a, b, c, d, e;
 	BigInteger limit;
 	BigInteger one("1");
 	BigInteger x,y,w,z;
-	for(BigInteger i("00020"); i>=limit; i--){
-		//cout<<i<<" ";
+	cout<<BigInteger("2314")-BigInteger("2225")-BigInteger()<<endl;
+	for(BigInteger i("00020"); i>=limit && false; i--){
 		cout<<++x<<" "<<y++<<" ";
 		cout<<--w<<" "<<z--<<endl;
-	}
-	cout<<endl;
-	for(int i =-10; i<=10; i++){
-		cout<<i<<" ";
 	}
 	cout<<endl;
 	cout<<"Value = "<<BigInteger("-000010")<<endl;
 	while(cin>>a>>b){
 		cout<<a<<" "<<b<<endl;
-		cout<<a-b<<endl;
-		cout<<a+b<<endl;
+		cout<<"Substraction = "<<a-b<<endl;
+		cout<<"Addition = "<<a+b<<endl;
+		cout<<"Multiplication = "<<a*b<<endl;
 	}
 	return 0;
 }
