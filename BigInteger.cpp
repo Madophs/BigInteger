@@ -473,6 +473,7 @@ BigInteger BigInteger::longDivision(BigInteger dividend, BigInteger &divisor){
 	int dividendLength = dividend.value.size();
 	result.value.resize(dividendLength,0);
 	while(true){
+		dividend.removeLeadingZeros();
 		if(dividend.value.size() >= divisor.value.size()){
 			int pos = dividend.value.size() - divisor.value.size();
 			subNumber.value.assign(dividend.value.begin() + pos, dividend.value.end());
