@@ -24,15 +24,17 @@ class BigInteger{
 		BigInteger operator %= (BigInteger);
 		unsigned int & operator[](int);
 		void operator = (BigInteger);
-		bool operator == (BigInteger &);
-		bool operator != (BigInteger &);
-		bool operator < (BigInteger &);
-		bool operator <= (BigInteger &);
-		bool operator > (BigInteger &);
-		bool operator >= (BigInteger &);
+		bool operator == (BigInteger);
+		bool operator != (BigInteger);
+		bool operator < (BigInteger);
+		bool operator <= (BigInteger);
+		bool operator > (BigInteger);
+		bool operator >= (BigInteger);
 		void print();
 		int length();
 		bool isPositive();
+		bool absGreater(BigInteger &);
+		bool absLesser(BigInteger &);
 		void readString(string);
 		string toString();
 		void addToTheBeginning(int val, int cant = 1);
@@ -49,9 +51,11 @@ class BigInteger{
 		BigInteger longMultiplication(BigInteger &, BigInteger &);
 		BigInteger karatsubaMultiplication(BigInteger&, BigInteger&);
 		BigInteger division(BigInteger &, BigInteger &);
+		BigInteger longDivision(BigInteger, BigInteger &);
 		BigInteger pow(BigInteger &);
 		BigInteger pow(int);
 };
+// Constructors
 
 BigInteger::BigInteger(){
 	this->value.emplace_back(0);
@@ -71,66 +75,11 @@ BigInteger::BigInteger(long long LLValue){
 	string stringValue = to_string(LLValue);
 	readString(stringValue);
 }
-BigInteger BigInteger::operator + (BigInteger bigNumber){
-	return addition(*this,bigNumber);
-}
 
-BigInteger BigInteger::operator += (BigInteger bigNumber){
-	*this = addition(*this,bigNumber);
-	return *this;
-}
-BigInteger & BigInteger::operator ++ (){
-	BigInteger one("1");
-	*this = addition(*this,one);
-	return *this;
-}
+// Relational Operators
 
-BigInteger BigInteger::operator ++ (int){
-	BigInteger one("1");
-	BigInteger prevCopy = *this;
-	*this = addition(*this,one);
-	return prevCopy;
-}
-
-BigInteger BigInteger::operator - (BigInteger bigNumber){
-	bigNumber.positive = !bigNumber.positive;
-	return addition(*this, bigNumber);
-}
-
-BigInteger BigInteger::operator -= (BigInteger bigNumber){
-	bigNumber.positive = !bigNumber.positive;
-	*this = addition(*this,bigNumber);
-	return *this;
-}
-
-BigInteger & BigInteger::operator -- (){
-	BigInteger one("1");
-	one.positive = false;
-	*this = addition(*this,one);
-	return *this;
-}
-BigInteger BigInteger::operator --(int){
-	BigInteger one("1");
-	one.positive = false;
-	BigInteger prevCopy = *this;
-	*this = addition(*this,one);
-	return prevCopy;
-}
-
-BigInteger BigInteger::operator * (BigInteger bigNumber){
-	BigInteger result = multiplication(*this,bigNumber);
-	return result;
-}
-unsigned int & BigInteger::operator[](int index){
-	return this->value[this->length()-1-index];
-}
-
-void BigInteger::operator = (BigInteger bigNumber){
-	this->value = bigNumber.value;
-	this->positive = bigNumber.positive;
-}
-
-bool BigInteger::operator == (BigInteger &bigNumber){
+bool BigInteger::operator == (BigInteger bigNumber){
+	bigNumber.removeLeadingZeros();
 	if(this->positive != bigNumber.positive) return false;
 	if(value.size() != bigNumber.length()) return false;
 	for(int i = 0; i<bigNumber.length(); i++){
@@ -139,7 +88,8 @@ bool BigInteger::operator == (BigInteger &bigNumber){
 	return true;
 }
 
-bool BigInteger::operator != (BigInteger &bigNumber){
+bool BigInteger::operator != (BigInteger bigNumber){
+	bigNumber.removeLeadingZeros();
 	if(this->positive != bigNumber.positive) return true;
 	if(value.size() != bigNumber.length()) return true;
 	for(int i = 0; i<bigNumber.length(); i++){
@@ -147,7 +97,9 @@ bool BigInteger::operator != (BigInteger &bigNumber){
 	}
 	return false;
 }
-bool BigInteger::operator < (BigInteger &bigNumber){
+
+bool BigInteger::operator < (BigInteger bigNumber){
+	bigNumber.removeLeadingZeros();
 	if(!this->positive && !bigNumber.positive){
 		if(this->value.size() != bigNumber.value.size()){
 			if(this->value.size() > bigNumber.value.size()) return true;
@@ -160,21 +112,22 @@ bool BigInteger::operator < (BigInteger &bigNumber){
 		return false;
 	}
 	if(this->positive != bigNumber.positive){
-		if(!this->positive && bigNumber.positive) return true;
+		if(!this->positive) return true;
 		return false;
 	}
 	if(this->value.size() != bigNumber.value.size()){
-		if(this->value.size() < bigNumber.value.size()) return true;
-		return false;
+		return this->value.size() < bigNumber.value.size();
 	}
-	for(int i = this->length()-1; i>=0; i--){
+	for(int i = this->value.size()-1; i>=0; i--){
 		if(this->value[i] == bigNumber.value[i]) continue;
 		if(this->value[i] < bigNumber.value[i]) return true;
+		return false;
 	}
 	return false;
 }
 
-bool BigInteger::operator <= (BigInteger &bigNumber){
+bool BigInteger::operator <= (BigInteger bigNumber){
+	bigNumber.removeLeadingZeros();
 	if(!this->positive && !bigNumber.positive){
 		if(this->value.size() != bigNumber.value.size()){
 			if(this->value.size() > bigNumber.value.size()) return true;
@@ -198,25 +151,97 @@ bool BigInteger::operator <= (BigInteger &bigNumber){
 	for(int i = this->value.size()-1; i>=0; i--){
 		if(this->value[i] < bigNumber.value[i]) return true;
 		if(this->value[i] == bigNumber.value[i]) continue;
-		if(this->value[i] > bigNumber.value[i]) return false;
+		return false;
 	}
 	return true;
 }
 
-bool BigInteger::operator > (BigInteger &bigNumber){
+bool BigInteger::operator > (BigInteger bigNumber){
 	return !(*this <= bigNumber);
 }
 
-bool BigInteger::operator >= (BigInteger &bigNumber){
+bool BigInteger::operator >= (BigInteger bigNumber){
 	return !(*this < bigNumber);
 }
-istream & operator >> (istream &in,BigInteger &bigInteger){
-	string str;
-	in>>str;
-	bigInteger.readString(str);
-	return in;
+
+
+// Arithmetic Operators
+
+BigInteger BigInteger::operator + (BigInteger bigNumber){
+	return addition(*this,bigNumber);
 }
 
+BigInteger BigInteger::operator - (BigInteger bigNumber){
+	bigNumber.positive = !bigNumber.positive;
+	return addition(*this, bigNumber);
+}
+
+BigInteger BigInteger::operator * (BigInteger bigNumber){
+	return multiplication(*this,bigNumber);
+}
+
+BigInteger BigInteger::operator / (BigInteger bigNumber){
+	return division(*this, bigNumber);
+}
+
+// Increment and Decrement Operators
+
+BigInteger BigInteger::operator ++ (int){
+	BigInteger one("1");
+	BigInteger prevCopy = *this;
+	*this = addition(*this,one);
+	return prevCopy;
+}
+
+BigInteger & BigInteger::operator ++ (){
+	BigInteger one("1");
+	*this = addition(*this,one);
+	return *this;
+}
+
+BigInteger & BigInteger::operator -- (){
+	BigInteger one("1");
+	one.positive = false;
+	*this = addition(*this,one);
+	return *this;
+}
+
+BigInteger BigInteger::operator --(int){
+	BigInteger one("1");
+	one.positive = false;
+	BigInteger prevCopy = *this;
+	*this = addition(*this,one);
+	return prevCopy;
+}
+
+// Assigment Operators
+
+void BigInteger::operator = (BigInteger bigNumber){
+	this->value = bigNumber.value;
+	this->positive = bigNumber.positive;
+}
+BigInteger BigInteger::operator += (BigInteger bigNumber){
+	*this = addition(*this,bigNumber);
+	return *this;
+}
+
+BigInteger BigInteger::operator -= (BigInteger bigNumber){
+	bigNumber.positive = !bigNumber.positive;
+	*this = addition(*this,bigNumber);
+	return *this;
+}
+
+BigInteger BigInteger::operator *= (BigInteger bigNumber){
+	*this =  multiplication(*this,bigNumber);
+	return *this;
+}
+
+BigInteger BigInteger::operator /= (BigInteger bigNumber){
+	*this = *this / bigNumber;
+	return *this;
+}
+
+// Stream Operators
 
 ostream & operator << (ostream &out, BigInteger bigInteger){
 	if(!bigInteger.isPositive()) cout<<"-";
@@ -225,12 +250,52 @@ ostream & operator << (ostream &out, BigInteger bigInteger){
 	}
 	return out;
 }
+
+istream & operator >> (istream &in,BigInteger &bigInteger){
+	string str;
+	in>>str;
+	bigInteger.readString(str);
+	return in;
+}
+
+// Indexed operators
+
+unsigned int & BigInteger::operator[](int index){
+	return this->value[this->length()-1-index];
+}
+
+// Functions and methods
+
 int BigInteger::length(){
 	return this->value.size();
 }
+
 bool BigInteger::isPositive(){
 	return this->positive;
 }
+
+bool BigInteger::absGreater(BigInteger &bigNumber){
+	if(this->value.size() != bigNumber.value.size())
+		return this->value.size() > bigNumber.value.size();
+	for(int i = this->value.size()-1; i>=0; i--){
+		if(this->value[i] == bigNumber.value[i]) continue;
+		if(this->value[i] > bigNumber.value[i]) return true;
+		return false;
+	}
+	return false;
+}
+
+bool BigInteger::absLesser(BigInteger &bigNumber){
+	if(this->value.size() != bigNumber.value.size())
+		return this->value.size() < bigNumber.value.size();
+	for(int i = this->value.size(); i>=0; i--){
+		if(this->value[i] == bigNumber.value[i]) continue;
+		if(this->value[i] < bigNumber.value[i]) return true;
+		return false;
+	}
+	return false;
+}
+
 void BigInteger::readString(string str){
 	if(str.empty())return;
 	value.clear();
@@ -250,6 +315,8 @@ string BigInteger::toString(){
 	if(!isPositive()) ret = "-" + ret;
 	return ret;
 }
+
+
 void BigInteger::addLeadingZeros(int zeros){
 	value.resize(value.size()+zeros);
 }
@@ -258,6 +325,7 @@ void BigInteger::removeLeadingZeros(){
 	while(value.back() == 0 && value.size() > 1)
 		value.pop_back();
 }
+
 void BigInteger::makePositiveIfZero(){
 	if(this->value.size()> 1) return;
 	if(!this->getValueAt(0)) positive = true;
@@ -274,6 +342,7 @@ void BigInteger::addToTheBeginning(int val, int cant){
 unsigned int & BigInteger::getValueAt(int index){
 	return value[index];
 }
+
 BigInteger BigInteger::addition(BigInteger big1, BigInteger big2){
 	if(big1.isPositive() != big2.isPositive()){
 		if(big1.value.size() != big2.value.size()){
@@ -339,6 +408,10 @@ BigInteger BigInteger::multiplication(BigInteger big1, BigInteger big2){
 	return karatsubaMultiplication(big1, big2);
 }
 
+BigInteger BigInteger::division(BigInteger &dividend, BigInteger &divisor){
+	return longDivision(dividend, divisor);
+}
+
 BigInteger BigInteger::longMultiplication(BigInteger &big1, BigInteger &big2){
 	BigInteger result;
 	result.value.resize(big1.value.size()+big2.value.size()+1);
@@ -386,14 +459,54 @@ BigInteger BigInteger::karatsubaMultiplication(BigInteger &big1, BigInteger &big
 	A.addToTheBeginning(0,splitSize<<1);
 	E.addToTheBeginning(0,splitSize);
 	BigInteger result =  A + E + D;
-	if(big1.positive != big2.positive){
-		result.positive = false;
-	}else{
-		result.positive = true;
-	}
+	result = big1.positive == big2.positive;
 	result.removeLeadingZeros();
 	return result;
 }
+
+BigInteger BigInteger::longDivision(BigInteger dividend, BigInteger &divisor){
+	if(divisor == BigInteger()) return BigInteger();
+	if(divisor.absGreater(dividend)) return BigInteger();
+	bool dividendSign = dividend.positive, divisorSign = divisor.positive;
+	dividend.positive = divisor.positive = true;
+	BigInteger result, subNumber, bigRemainder;
+	int dividendLength = dividend.value.size();
+	result.value.resize(dividendLength,0);
+	while(true){
+		if(dividend.value.size() >= divisor.value.size()){
+			int pos = dividend.value.size() - divisor.value.size();
+			subNumber.value.assign(dividend.value.begin() + pos, dividend.value.end());
+			if(subNumber < divisor){
+				if(dividend.value.size() > divisor.value.size()){
+					subNumber.value.insert(subNumber.value.begin(), dividend.value[dividend.value.size()-(divisor.value.size()+1)]);
+				}else{
+					bigRemainder = subNumber;
+					break;
+				}
+			}
+		}else{
+			bigRemainder = dividend;
+			break;
+		}
+		int quotient = 0, splitSize = subNumber.value.size();
+		int indexPosition = (dividendLength-(subNumber.value.size()+(dividendLength-dividend.value.size())));
+		while(divisor <= subNumber){
+			subNumber-=divisor;
+			++quotient;
+		}
+		bigRemainder = subNumber;
+		result.value[indexPosition] = quotient; 
+		int leadingNumbersToRemove = splitSize-bigRemainder.value.size();
+		while(leadingNumbersToRemove--) dividend.value.pop_back();
+		for(int i = 0; i<bigRemainder.value.size(); i++){
+			dividend.value[dividend.value.size()-i-1] = bigRemainder.value[bigRemainder.value.size()-1-i];
+		}
+	}
+	result.removeLeadingZeros();
+	result.positive = dividendSign == divisorSign;
+	return result;
+}
+
 int main(){
     //clock_t start, end; 
     //start = clock();
@@ -402,7 +515,7 @@ int main(){
 	cout.tie(NULL);
 	BigInteger a,b;
 	while(cin>>a>>b){
-		cout<<a*b<<"\n";
+		cout<<a/b<<"\n";
 	}
 	//end = clock(); 
     //double time_taken = double(end - start) / double(CLOCKS_PER_SEC); 
