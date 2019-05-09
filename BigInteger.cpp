@@ -38,8 +38,13 @@ class BigInteger{
 		void readString(string);
 		string toString();
 		void addToTheBeginning(int val, int cant = 1);
-	private:
+		pair<BigInteger,BigInteger> resultAndRemainder(BigInteger);
+		BigInteger ZERO() const;
+		BigInteger ONE() const;
+		BigInteger pow(int);
+		BigInteger sqrt();
 		vector<unsigned int> value;
+	private:
 		bool positive;
 		void addLeadingZeros(int);
 		void removeLeadingZeros();
@@ -52,14 +57,13 @@ class BigInteger{
 		BigInteger karatsubaMultiplication(BigInteger&, BigInteger&);
 		BigInteger division(BigInteger &, BigInteger &);
 		BigInteger longDivision(BigInteger, BigInteger &);
-		BigInteger pow(BigInteger &);
-		BigInteger pow(int);
+		BigInteger mod(BigInteger, BigInteger&);
 };
 // Constructors
 
 BigInteger::BigInteger(){
 	this->value.emplace_back(0);
-	positive = true;
+	positive = true;	
 }
 
 BigInteger::BigInteger(string stringValue){
@@ -164,7 +168,6 @@ bool BigInteger::operator >= (BigInteger bigNumber){
 	return !(*this < bigNumber);
 }
 
-
 // Arithmetic Operators
 
 BigInteger BigInteger::operator + (BigInteger bigNumber){
@@ -182,6 +185,10 @@ BigInteger BigInteger::operator * (BigInteger bigNumber){
 
 BigInteger BigInteger::operator / (BigInteger bigNumber){
 	return division(*this, bigNumber);
+}
+
+BigInteger BigInteger::operator % (BigInteger bigNumber){
+	return mod(*this,bigNumber);
 }
 
 // Increment and Decrement Operators
@@ -238,6 +245,11 @@ BigInteger BigInteger::operator *= (BigInteger bigNumber){
 
 BigInteger BigInteger::operator /= (BigInteger bigNumber){
 	*this = *this / bigNumber;
+	return *this;
+}
+
+BigInteger BigInteger::operator %= (BigInteger bigNumber){
+	*this = mod(*this, bigNumber);
 	return *this;
 }
 
@@ -316,6 +328,46 @@ string BigInteger::toString(){
 	return ret;
 }
 
+BigInteger BigInteger::ZERO() const{
+	return BigInteger();
+}
+
+BigInteger BigInteger::ONE() const{
+	return BigInteger("1");
+}
+
+BigInteger BigInteger::pow(int power){
+	BigInteger base = *this;
+	BigInteger result("1");
+	while(power>0){
+		if(power & 1){
+			result*=base;
+			base*=base;
+			power>>=1;
+		}else{
+			base*=base;
+			power>>=1;
+		}
+	}
+	return result;
+}
+
+BigInteger BigInteger::sqrt(){
+	if(!this->positive){
+		cout<<"Imaginary number.\n";
+		exit(1);
+	}
+	BigInteger x("1");
+	BigInteger prevValue("-1");
+	int iterations = 10;
+	while(true){
+		if(prevValue == x) return x;
+		if(prevValue+1 == x) return prevValue;
+		prevValue = x;
+		x = (x+(*this/x))/2;
+	}
+	return x;
+}
 
 void BigInteger::addLeadingZeros(int zeros){
 	value.resize(value.size()+zeros);
@@ -459,13 +511,65 @@ BigInteger BigInteger::karatsubaMultiplication(BigInteger &big1, BigInteger &big
 	A.addToTheBeginning(0,splitSize<<1);
 	E.addToTheBeginning(0,splitSize);
 	BigInteger result =  A + E + D;
-	result = big1.positive == big2.positive;
+	result.positive = big1.positive == big2.positive;
 	result.removeLeadingZeros();
 	return result;
 }
 
+pair<BigInteger,BigInteger> BigInteger::resultAndRemainder(BigInteger divisor){
+	if(divisor == BigInteger()){
+		cout<<"Mod by zero.\n";
+		exit(1);
+	};
+	BigInteger dividend = *this;
+	if(divisor == BigInteger()) return make_pair(BigInteger(), BigInteger("-1"));
+	if(divisor.absGreater(dividend)) return make_pair(BigInteger(),*this);
+	bool dividendSign = dividend.positive, divisorSign = divisor.positive;
+	dividend.positive = divisor.positive = true;
+	BigInteger result, subNumber, bigRemainder;
+	int dividendLength = dividend.value.size();
+	result.value.resize(dividendLength,0);
+	while(true){
+		dividend.removeLeadingZeros();
+		if(dividend.value.size() >= divisor.value.size()){
+			int pos = dividend.value.size() - divisor.value.size();
+			subNumber.value.assign(dividend.value.begin() + pos, dividend.value.end());
+			if(subNumber < divisor){
+				if(dividend.value.size() > divisor.value.size()){
+					subNumber.value.insert(subNumber.value.begin(), dividend.value[dividend.value.size()-(divisor.value.size()+1)]);
+				}else{
+					bigRemainder = subNumber;
+					break;
+				}
+			}
+		}else{
+			bigRemainder = dividend;
+			break;
+		}
+		int quotient = 0, splitSize = subNumber.value.size();
+		int indexPosition = (dividendLength-(subNumber.value.size()+(dividendLength-dividend.value.size())));
+		while(divisor <= subNumber){
+			subNumber-=divisor;
+			++quotient;
+		}
+		bigRemainder = subNumber;
+		result.value[indexPosition] = quotient; 
+		int leadingNumbersToRemove = splitSize-bigRemainder.value.size();
+		while(leadingNumbersToRemove--) dividend.value.pop_back();
+		for(int i = 0; i<bigRemainder.value.size(); i++){
+			dividend.value[dividend.value.size()-i-1] = bigRemainder.value[bigRemainder.value.size()-1-i];
+		}
+	}
+	result.removeLeadingZeros();
+	result.positive = dividendSign == divisorSign;
+	return make_pair(result,bigRemainder);
+}
+
 BigInteger BigInteger::longDivision(BigInteger dividend, BigInteger &divisor){
-	if(divisor == BigInteger()) return BigInteger();
+	if(divisor == BigInteger()){
+		cout<<"Division by zero.\n";
+		exit(1);
+	};
 	if(divisor.absGreater(dividend)) return BigInteger();
 	bool dividendSign = dividend.positive, divisorSign = divisor.positive;
 	dividend.positive = divisor.positive = true;
@@ -508,6 +612,52 @@ BigInteger BigInteger::longDivision(BigInteger dividend, BigInteger &divisor){
 	return result;
 }
 
+BigInteger BigInteger::mod(BigInteger dividend, BigInteger &divisor){
+	if(divisor == BigInteger()){
+		cout<<"Module by zero.\n";
+		exit(1);
+	}
+	if(divisor.absGreater(dividend)) return BigInteger();
+	bool dividendSign = dividend.positive, divisorSign = divisor.positive;
+	dividend.positive = divisor.positive = true;
+	BigInteger result, subNumber, bigRemainder;
+	int dividendLength = dividend.value.size();
+	result.value.resize(dividendLength,0);
+	while(true){
+		dividend.removeLeadingZeros();
+		if(dividend.value.size() >= divisor.value.size()){
+			int pos = dividend.value.size() - divisor.value.size();
+			subNumber.value.assign(dividend.value.begin() + pos, dividend.value.end());
+			if(subNumber < divisor){
+				if(dividend.value.size() > divisor.value.size()){
+					subNumber.value.insert(subNumber.value.begin(), dividend.value[dividend.value.size()-(divisor.value.size()+1)]);
+				}else{
+					bigRemainder = subNumber;
+					break;
+				}
+			}
+		}else{
+			bigRemainder = dividend;
+			break;
+		}
+		int quotient = 0, splitSize = subNumber.value.size();
+		int indexPosition = (dividendLength-(subNumber.value.size()+(dividendLength-dividend.value.size())));
+		while(divisor <= subNumber){
+			subNumber-=divisor;
+			++quotient;
+		}
+		bigRemainder = subNumber;
+		result.value[indexPosition] = quotient; 
+		int leadingNumbersToRemove = splitSize-bigRemainder.value.size();
+		while(leadingNumbersToRemove--) dividend.value.pop_back();
+		for(int i = 0; i<bigRemainder.value.size(); i++){
+			dividend.value[dividend.value.size()-i-1] = bigRemainder.value[bigRemainder.value.size()-1-i];
+		}
+	}
+	result.removeLeadingZeros();
+	result.positive = dividendSign == divisorSign;
+	return bigRemainder;
+}
 int main(){
     //clock_t start, end; 
     //start = clock();
@@ -515,8 +665,9 @@ int main(){
 	cin.tie(NULL);
 	cout.tie(NULL);
 	BigInteger a,b;
+	int power;
 	while(cin>>a>>b){
-		cout<<a/b<<"\n";
+		cout<<a%b<<"\n";
 	}
 	//end = clock(); 
     //double time_taken = double(end - start) / double(CLOCKS_PER_SEC); 
